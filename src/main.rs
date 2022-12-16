@@ -9,18 +9,25 @@ const START_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR";
 const LIGHT_COL: Color = Color::rgb(1.0, 1.0, 1.0);
 const DARK_COL: Color = Color::rgb(0.3, 0.3, 0.3);
 
-enum Piece {
-    Pawn,
-    Knight,
-    Bishop,
-    Rook,
-    Queen,
-    King,
+#[derive(Component)]
+struct Piece;
+
+
+#[derive(Debug, Clone, Copy)]
+enum PieceType {
+    None = 0,
+    King = 1,
+    Pawn = 2,
+    Knight = 3,
+    Bishop = 4,
+    Rook = 5,
+    Queen = 6,
 }
 
+#[derive(Debug, Clone, Copy)]
 enum PieceColor {
-    White,
-    Black,
+    White = 8,
+    Black = 16,
 }
 
 fn setup(
@@ -46,7 +53,8 @@ fn setup(
             let is_light_square: bool = (row + column) % 2 != 0;
 
             let square_color = if is_light_square { LIGHT_COL } else { DARK_COL };
-            let square_position = Vec3::new(column as f32 * SQUARE_SIZE, row as f32 * SQUARE_SIZE, 0.0);
+            let square_position =
+                Vec3::new(column as f32 * SQUARE_SIZE, row as f32 * SQUARE_SIZE, 0.0);
             draw_square(
                 &mut commands,
                 square_color,
@@ -99,11 +107,32 @@ fn setup(
         });
     }
 
-    // Setup the piece locations (1d array of 64 elements)
-    let mut square: [u8; 64] = [0; 64];
-    // Black rook
-    
+    // Setup the piece locations in a hashmap (key: square, value: piece)
+    // let mut piece_locations: HashMap<String, String> = HashMap::new();
 
+    // Setup the piece locations in a 1d array
+    let mut square: [u8; 64] = [0; 64];
+    // Insert a piece into the square array, the piece is represented by a number (see Piece enum)
+    square[1] = PieceType::Pawn as u8 + PieceColor::White as u8;
+
+    // For now, manually update the board
+    update_board(&mut commands, &mut meshes, &mut materials, &square);
+
+    // TODO: Setup the pieces from the FEN string
+    // load_position_from_fen();
+}
+
+fn update_board(
+    commands: &mut Commands,
+    meshes: &mut ResMut<Assets<Mesh>>,
+    materials: &mut ResMut<Assets<ColorMaterial>>,
+    square: &[u8; 64],
+) {
+    
+}
+
+fn load_position_from_fen() {
+    // TODO: Load the position from the FEN string
 }
 
 fn draw_square(
@@ -123,7 +152,6 @@ fn draw_square(
         ..Default::default()
     });
 }
-    
 
 fn main() {
     App::new()
