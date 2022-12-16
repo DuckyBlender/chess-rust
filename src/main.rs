@@ -12,6 +12,7 @@ const DARK_COL: Color = Color::rgb(0.3, 0.3, 0.3);
 #[derive(Component)]
 struct Piece;
 
+struct MoveEvent;
 
 #[derive(Debug, Clone, Copy)]
 enum PieceType {
@@ -114,21 +115,16 @@ fn setup(
     let mut square: [u8; 64] = [0; 64];
     // Insert a piece into the square array, the piece is represented by a number (see Piece enum)
     square[1] = PieceType::Pawn as u8 + PieceColor::White as u8;
-
+    println!("{:?}", square[1]);
     // For now, manually update the board
-    update_board(&mut commands, &mut meshes, &mut materials, &square);
+    // update_board(&mut commands, &mut meshes, &mut materials, &square);
 
     // TODO: Setup the pieces from the FEN string
     // load_position_from_fen();
 }
 
-fn update_board(
-    commands: &mut Commands,
-    meshes: &mut ResMut<Assets<Mesh>>,
-    materials: &mut ResMut<Assets<ColorMaterial>>,
-    square: &[u8; 64],
-) {
-    
+fn update_board() {
+    // TODO: Update the board when a move event has been triggered
 }
 
 fn load_position_from_fen() {
