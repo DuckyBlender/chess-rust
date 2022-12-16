@@ -1,6 +1,26 @@
 use bevy::{prelude::*, sprite::MaterialMesh2dBundle};
+// Hashmap for storing pieces
+use std::collections::HashMap;
 
-const SQUARE_SIZE: f32 = 50.0;
+const SQUARE_SIZE: f32 = 60.0;
+const PIECES: [&str; 6] = ["pawn", "rook", "knight", "bishop", "queen", "king"];
+const COLORS: [&str; 2] = ["white", "black"];
+const PIECE_SIZE: f32 = 0.8;
+const START_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR";
+
+enum Piece {
+    Pawn,
+    Rook,
+    Knight,
+    Bishop,
+    Queen,
+    King,
+}
+
+enum PieceColor {
+    White,
+    Black,
+}
 
 fn setup(
     mut commands: Commands,
@@ -11,9 +31,9 @@ fn setup(
     // Setup camera at coordinate (4*30, 4*30)
     commands.spawn(Camera2dBundle {
         transform: Transform::from_translation(Vec3::new(
-            4.0 * SQUARE_SIZE,
-            4.0 * SQUARE_SIZE,
-            0.0,
+            4.0 * SQUARE_SIZE - SQUARE_SIZE / 2.0,
+            4.0 * SQUARE_SIZE - SQUARE_SIZE / 2.0,
+            500.0,
         )),
         ..Default::default()
     });
@@ -56,7 +76,7 @@ fn setup(
             }
         }
     }
-    
+
     // LETTERS BELOW BOARD
     let font = asset_server.load("fonts/Lexend-Regular.ttf");
     let text_style = TextStyle {
@@ -67,13 +87,11 @@ fn setup(
     for x in 0..8 {
         commands.spawn(Text2dBundle {
             // Convert numbers to letters
-            text: Text::from_section(
-                &((x + 65) as u8 as char).to_string(),
-                text_style.clone(),
-            ).with_alignment(TextAlignment {
-                vertical: VerticalAlign::Center,
-                horizontal: HorizontalAlign::Center,
-            }),
+            text: Text::from_section(&((x + 65) as u8 as char).to_string(), text_style.clone())
+                .with_alignment(TextAlignment {
+                    vertical: VerticalAlign::Center,
+                    horizontal: HorizontalAlign::Center,
+                }),
             transform: Transform::from_translation(Vec3::new(
                 x as f32 * SQUARE_SIZE,
                 -SQUARE_SIZE,
@@ -86,13 +104,12 @@ fn setup(
     // NUMBERS TO THE LEFT OF BOARD
     for y in 0..8 {
         commands.spawn(Text2dBundle {
-            text: Text::from_section(
-                &(y + 1).to_string(),
-                text_style.clone(),
-            ).with_alignment(TextAlignment {
-                vertical: VerticalAlign::Center,
-                horizontal: HorizontalAlign::Center,
-            }),
+            text: Text::from_section(&(y + 1).to_string(), text_style.clone()).with_alignment(
+                TextAlignment {
+                    vertical: VerticalAlign::Center,
+                    horizontal: HorizontalAlign::Center,
+                },
+            ),
             transform: Transform::from_translation(Vec3::new(
                 -SQUARE_SIZE,
                 y as f32 * SQUARE_SIZE,
@@ -101,11 +118,34 @@ fn setup(
             ..Default::default()
         });
     }
+
+    // Setup pieces
+
+
+    // Setup for example king piece, will be replaced by FEN
+    commands.spawn(SpriteBundle {
+        texture: asset_server.load("pieces/white-king.png"),
+        transform: Transform::from_translation(Vec3::new(
+            4.0 * SQUARE_SIZE,
+            4.0 * SQUARE_SIZE,
+            1.0,
+        )),
+        ..Default::default()
+    });
 }
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins)
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            window: WindowDescriptor {
+                title: "Rust Chess".to_string(),
+                width: SQUARE_SIZE * 10.0,
+                height: SQUARE_SIZE * 10.0,
+                resizable: true,
+                ..default()
+            },
+            ..default()
+        }))
         .add_startup_system(setup)
         .run();
 }
