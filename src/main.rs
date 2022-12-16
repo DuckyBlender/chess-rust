@@ -54,31 +54,52 @@ fn setup(
                     ..Default::default()
                 });
             }
-
-            // LETTERS ABOVE BOARD
-            if x == 0 {
-                let font = asset_server.load("fonts/Lexend-Regular.ttf");
-                let text_style = TextStyle {
-                    font,
-                    font_size: 30.0,
-                    color: Color::ORANGE,
-                };
-                commands.spawn(Text2dBundle {
-                    text: Text::from_section(
-                        format!("{}", (y + 65) as u8 as char),
-                        text_style.clone()).with_alignment(TextAlignment {
-                            vertical: VerticalAlign::Center,
-                            horizontal: HorizontalAlign::Center,
-                        }),
-                    transform: Transform::from_translation(Vec3::new(
-                        x as f32 * SQUARE_SIZE,
-                        y as f32 * SQUARE_SIZE + SQUARE_SIZE / 2.0,
-                        0.0,
-                    )),
-                    ..Default::default()
-                });
-            }
         }
+    }
+    
+    // LETTERS BELOW BOARD
+    let font = asset_server.load("fonts/Lexend-Regular.ttf");
+    let text_style = TextStyle {
+        font,
+        font_size: 30.0,
+        color: Color::ORANGE,
+    };
+    for x in 0..8 {
+        commands.spawn(Text2dBundle {
+            // Convert numbers to letters
+            text: Text::from_section(
+                &((x + 65) as u8 as char).to_string(),
+                text_style.clone(),
+            ).with_alignment(TextAlignment {
+                vertical: VerticalAlign::Center,
+                horizontal: HorizontalAlign::Center,
+            }),
+            transform: Transform::from_translation(Vec3::new(
+                x as f32 * SQUARE_SIZE,
+                -SQUARE_SIZE,
+                0.0,
+            )),
+            ..Default::default()
+        });
+    }
+
+    // NUMBERS TO THE LEFT OF BOARD
+    for y in 0..8 {
+        commands.spawn(Text2dBundle {
+            text: Text::from_section(
+                &(y + 1).to_string(),
+                text_style.clone(),
+            ).with_alignment(TextAlignment {
+                vertical: VerticalAlign::Center,
+                horizontal: HorizontalAlign::Center,
+            }),
+            transform: Transform::from_translation(Vec3::new(
+                -SQUARE_SIZE,
+                y as f32 * SQUARE_SIZE,
+                0.0,
+            )),
+            ..Default::default()
+        });
     }
 }
 
