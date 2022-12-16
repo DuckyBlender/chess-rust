@@ -3,7 +3,7 @@ use bevy::{prelude::*, sprite::MaterialMesh2dBundle};
 use std::collections::HashMap;
 
 const SQUARE_SIZE: f32 = 60.0;
-const PIECE_SIZE: f32 = 0.8;
+const PIECE_SIZE: f32 = 0.9;
 const START_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR";
 
 const LIGHT_COL: Color = Color::rgb(1.0, 1.0, 1.0);
@@ -113,22 +113,56 @@ fn setup(
 
     // Setup the piece locations in a 1d array
     let mut square: [u8; 64] = [0; 64];
-    // Insert a piece into the square array, the piece is represented by a number (see Piece enum)
-    square[1] = PieceType::Pawn as u8 + PieceColor::White as u8;
+    // Initialize the board with the FEN string
+    
+
     println!("{:?}", square[1]);
-    // For now, manually update the board
-    // update_board(&mut commands, &mut meshes, &mut materials, &square);
+
+    // For now, manually update the board with the piece
+    // Create a hashmap with the piece prefixes
+    let mut piece_type_from_symbol = HashMap::new();
+    piece_type_from_symbol.insert('p', PieceType::Pawn);
+    piece_type_from_symbol.insert('n', PieceType::Knight);
+    piece_type_from_symbol.insert('b', PieceType::Bishop);
+    piece_type_from_symbol.insert('r', PieceType::Rook);
+    piece_type_from_symbol.insert('q', PieceType::Queen);
+    piece_type_from_symbol.insert('k', PieceType::King);
+
+
+    commands.spawn(SpriteBundle {
+        texture: asset_server.load("pieces/white-pawn.png"),
+        transform: Transform::from_translation(Vec3::new(
+            0.0 * SQUARE_SIZE,
+            1.0 * SQUARE_SIZE,
+            0.0,
+        )),
+        ..Default::default()
+    });
 
     // TODO: Setup the pieces from the FEN string
     // load_position_from_fen();
 }
 
+
+// TODO: Finish this function
+// fn translate_square_to_position(square: String) -> Vec3 {
+    // Convert the square to a position
+    // There are 8 squares per row
+    // Start from the top left corner (X: 0, Y: BLOCK_SIZE * 8)
+    // The square is represented by a number (0-63)
+
+    // println!("pos: {}, x: {}, y: {}", square, x, y);
+    // Vec3::new(x as f32, y as f32, 0.0)
+// }
+
+
+// TODO: Update the board when a move event has been triggered
 fn update_board() {
-    // TODO: Update the board when a move event has been triggered
 }
 
+
+// TODO: Load the position from the FEN string
 fn load_position_from_fen() {
-    // TODO: Load the position from the FEN string
 }
 
 fn draw_square(
