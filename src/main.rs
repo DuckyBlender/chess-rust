@@ -6,6 +6,7 @@ fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
+    asset_server: Res<AssetServer>,
 ) {
     // Setup camera at coordinate (4*30, 4*30)
     commands.spawn(Camera2dBundle {
@@ -48,6 +49,30 @@ fn setup(
                     transform: Transform::from_translation(Vec3::new(
                         x as f32 * SQUARE_SIZE,
                         y as f32 * SQUARE_SIZE,
+                        0.0,
+                    )),
+                    ..Default::default()
+                });
+            }
+
+            // LETTERS ABOVE BOARD
+            if x == 0 {
+                let font = asset_server.load("fonts/Lexend-Regular.ttf");
+                let text_style = TextStyle {
+                    font,
+                    font_size: 30.0,
+                    color: Color::ORANGE,
+                };
+                commands.spawn(Text2dBundle {
+                    text: Text::from_section(
+                        format!("{}", (y + 65) as u8 as char),
+                        text_style.clone()).with_alignment(TextAlignment {
+                            vertical: VerticalAlign::Center,
+                            horizontal: HorizontalAlign::Center,
+                        }),
+                    transform: Transform::from_translation(Vec3::new(
+                        x as f32 * SQUARE_SIZE,
+                        y as f32 * SQUARE_SIZE + SQUARE_SIZE / 2.0,
                         0.0,
                     )),
                     ..Default::default()
