@@ -1,18 +1,19 @@
 use bevy::{prelude::*, sprite::MaterialMesh2dBundle};
-// Hashmap for storing pieces
+// Hashmap for storing piece locations
 use std::collections::HashMap;
 
 const SQUARE_SIZE: f32 = 60.0;
-const PIECES: [&str; 6] = ["pawn", "rook", "knight", "bishop", "queen", "king"];
-const COLORS: [&str; 2] = ["white", "black"];
 const PIECE_SIZE: f32 = 0.8;
 const START_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR";
 
+const LIGHT_COL: Color = Color::rgb(1.0, 1.0, 1.0);
+const DARK_COL: Color = Color::rgb(0.3, 0.3, 0.3);
+
 enum Piece {
     Pawn,
-    Rook,
     Knight,
     Bishop,
+    Rook,
     Queen,
     King,
 }
@@ -40,40 +41,19 @@ fn setup(
     // Setup chess board
 
     // let mut board = Vec::new();
-    for x in 0..8 {
-        for y in 0..8 {
-            // Checkerboard pattern
-            if (x + y) % 2 == 0 {
-                commands.spawn(MaterialMesh2dBundle {
-                    material: materials.add(Color::rgb(0.3, 0.3, 0.3).into()),
-                    // Size 30 quads
-                    mesh: bevy::sprite::Mesh2dHandle(meshes.add(Mesh::from(shape::Quad {
-                        size: Vec2::new(SQUARE_SIZE, SQUARE_SIZE),
-                        flip: false,
-                    }))),
-                    transform: Transform::from_translation(Vec3::new(
-                        x as f32 * SQUARE_SIZE,
-                        y as f32 * SQUARE_SIZE,
-                        0.0,
-                    )),
-                    ..Default::default()
-                });
-            } else {
-                commands.spawn(MaterialMesh2dBundle {
-                    material: materials.add(Color::rgb(1.0, 1.0, 1.0).into()),
-                    // Size 30 quads
-                    mesh: bevy::sprite::Mesh2dHandle(meshes.add(Mesh::from(shape::Quad {
-                        size: Vec2::new(SQUARE_SIZE, SQUARE_SIZE),
-                        flip: false,
-                    }))),
-                    transform: Transform::from_translation(Vec3::new(
-                        x as f32 * SQUARE_SIZE,
-                        y as f32 * SQUARE_SIZE,
-                        0.0,
-                    )),
-                    ..Default::default()
-                });
-            }
+    for row in 0..8 {
+        for column in 0..8 {
+            let is_light_square: bool = (row + column) % 2 != 0;
+
+            let square_color = if is_light_square { LIGHT_COL } else { DARK_COL };
+            let square_position = Vec3::new(column as f32 * SQUARE_SIZE, row as f32 * SQUARE_SIZE, 0.0);
+            draw_square(
+                &mut commands,
+                square_color,
+                square_position,
+                &mut meshes,
+                &mut materials,
+            );
         }
     }
 
@@ -119,20 +99,31 @@ fn setup(
         });
     }
 
-    // Setup pieces
+    // Setup the piece locations (1d array of 64 elements)
+    let mut square: [u8; 64] = [0; 64];
+    // Black rook
+    
 
+}
 
-    // Setup for example king piece, will be replaced by FEN
-    commands.spawn(SpriteBundle {
-        texture: asset_server.load("pieces/white-king.png"),
-        transform: Transform::from_translation(Vec3::new(
-            4.0 * SQUARE_SIZE,
-            4.0 * SQUARE_SIZE,
-            1.0,
-        )),
+fn draw_square(
+    commands: &mut Commands,
+    square_color: Color,
+    square_position: Vec3,
+    meshes: &mut ResMut<Assets<Mesh>>,
+    materials: &mut ResMut<Assets<ColorMaterial>>,
+) {
+    commands.spawn(MaterialMesh2dBundle {
+        material: materials.add(square_color.into()),
+        mesh: bevy::sprite::Mesh2dHandle(meshes.add(Mesh::from(shape::Quad {
+            size: Vec2::new(SQUARE_SIZE, SQUARE_SIZE),
+            flip: false,
+        }))),
+        transform: Transform::from_translation(square_position),
         ..Default::default()
     });
 }
+    
 
 fn main() {
     App::new()
