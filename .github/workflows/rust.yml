@@ -18,8 +18,8 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-      - name: Install dependencies
-        run: sudo apt-get install libssl-dev pkg-config libasound2-dev -y
+      - name: Install bevy dependencies
+        run: sudo apt-get install libssl-dev pkg-config libasound2-dev libudev-dev -y
       - name: Build project
         run: cargo build --release
       - name: Test project

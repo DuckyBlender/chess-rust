@@ -1,6 +1,10 @@
-use bevy::{prelude::*, sprite::MaterialMesh2dBundle};
-// Hashmap for storing piece locations
-use std::collections::HashMap;
+use bevy::{
+    prelude::*, 
+    sprite::MaterialMesh2dBundle,
+    input::mouse::{MouseMotion, MouseButtonInput},
+    diagnostic::{FrameTimeDiagnosticsPlugin},
+    winit::WinitSettings,
+};
 
 const SQUARE_SIZE: f32 = 60.0;
 const PIECE_SIZE: f32 = 1.0;
@@ -9,8 +13,27 @@ const START_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR";
 const LIGHT_COL: Color = Color::rgb(1.0, 1.0, 1.0);
 const DARK_COL: Color = Color::rgb(0.3, 0.3, 0.3);
 
-#[derive(Component)]
+#[derive(Resource)]
+struct BevyCounter {
+    pub count: usize,
+}
+
+#[derive(Component, Debug)]
 struct Piece;
+
+#[derive(Resource, Debug, Deref, DerefMut)]
+struct ChessPieces {
+    // Create a 1d array of 64 u8 values
+    pub pieces: [u8; 64],
+}
+
+// let mut piece_locations: [u8; 64] = [0; 64];
+// #[derive(Component, Default)]
+// struct Draggable;
+
+// Chess piece resource
+// #[derive(Resource, Default, Debug, Deref, DerefMut)]
+// struct ChessPieces(Vec<Entity>);
 
 struct MoveEvent;
 
@@ -36,6 +59,7 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     asset_server: Res<AssetServer>,
+    mut piece_locations: ResMut<ChessPieces>,
 ) {
     // Setup camera at coordinate (4*30, 4*30)
     commands.spawn(Camera2dBundle {
@@ -110,24 +134,9 @@ fn setup(
         });
     }
 
-    // Setup the piece locations in a hashmap (key: square, value: piece)
-    // let mut piece_locations: HashMap<String, String> = HashMap::new();
-
     // Setup the piece locations in a 1d array
-    let mut piece_locations: [u8; 64] = [0; 64];
+    //let mut piece_locations: [u8; 64] = [0; 64];
     // Initialize the board with the FEN string
-
-    println!("{:?}", piece_locations[1]);
-
-    // For now, manually update the board with the piece
-    // Create a hashmap with the piece prefixes
-    let mut piece_type_from_symbol = HashMap::new();
-    piece_type_from_symbol.insert('p', PieceType::Pawn);
-    piece_type_from_symbol.insert('n', PieceType::Knight);
-    piece_type_from_symbol.insert('b', PieceType::Bishop);
-    piece_type_from_symbol.insert('r', PieceType::Rook);
-    piece_type_from_symbol.insert('q', PieceType::Queen);
-    piece_type_from_symbol.insert('k', PieceType::King);
 
     // TODO: Setup the pieces from the FEN string
     load_position_from_fen(&mut commands, &mut piece_locations, asset_server);
@@ -141,6 +150,8 @@ fn load_position_from_fen(
     // Initialize the board with the FEN string
     let mut x: usize = 0;
     let mut y: usize = 0;
+    println!("Loading position from FEN...");
+    println!("FEN: {}", START_FEN);
     for char in START_FEN.chars() {
         if char == '/' {
             // Move to the next row
@@ -173,6 +184,7 @@ fn load_position_from_fen(
 
         let piece = (piece_type as u8) | (piece_color as u8);
         piece_locations[y * 8 + x] = piece;
+        println!("{:?} | {:?} = {}", piece_type, piece_color, piece);
 
         let square_position = Vec3::new(x as f32 * SQUARE_SIZE, y as f32 * SQUARE_SIZE, 1.0);
         draw_piece(
@@ -182,8 +194,10 @@ fn load_position_from_fen(
             square_position,
             &asset_server,
         );
+        
         x += 1;
     }
+    println!("PIECE LOCATIONS:\n{:?}", piece_locations)
 }
 
 fn draw_piece(
@@ -212,7 +226,6 @@ fn draw_piece(
     // Add the path to the image
     let piece_img = format!("pieces/{}", &piece_img);
 
-    // Spawn the piece
     commands.spawn(SpriteBundle {
         texture: asset_server.load(piece_img),
         transform: Transform::from_translation(square_position).with_scale(Vec3::splat(PIECE_SIZE)),
@@ -223,9 +236,6 @@ fn draw_piece(
 // TODO: Finish this function
 // fn translate_square_to_position(square: String) -> Vec3 {
 // Convert the square to a position
-// There are 8 squares per row
-// Start from the top left corner (X: 0, Y: BLOCK_SIZE * 8)
-// The square is represented by a number (0-63)
 
 // println!("pos: {}, x: {}, y: {}", square, x, y);
 // Vec3::new(x as f32, y as f32, 0.0)
@@ -253,6 +263,36 @@ fn draw_square(
     });
 }
 
+// TODO: Implement dragging the pieces, and moving them to the closest square on release
+
+// For now, just print a line if the mouse is clicked with the coordinates and the piece at that square
+fn mouse_click(
+    mouse_button_input: Res<Input<MouseButton>>,
+    windows: Res<Windows>,
+    mut counter: ResMut<BevyCounter>,
+    // Mut for now so that we can change the piece locations in the future
+    piece_locations: Res<ChessPieces>,
+) {
+    let win = windows.get_primary().expect("no primary window");
+    if mouse_button_input.just_pressed(MouseButton::Left) {
+        counter.count += 1;
+        println!("click at {:?}, clicked {} times", win.cursor_position(), counter.count);
+        // Check if the mouse is over a piece
+        // If so, print the piece type and color
+        let mouse_pos = win.cursor_position();
+        // Convert the mouse position to a square
+        // First, we need to get the mouse pos variable out of the Option
+        let mouse_pos = mouse_pos.unwrap();
+        let x = (mouse_pos.x / SQUARE_SIZE - 1.0) as usize;
+        let y = (mouse_pos.y / SQUARE_SIZE - 1.0) as usize;
+        if x > 7 || y > 7 {
+            return;
+        }
+        let piece = piece_locations.pieces[y * 8 + x];
+        println!("x: {}, y: {} = {:?}", x, y, piece);
+    }
+}
+
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
@@ -260,11 +300,18 @@ fn main() {
                 title: "Rust Chess".to_string(),
                 width: SQUARE_SIZE * 10.0,
                 height: SQUARE_SIZE * 10.0,
-                resizable: true,
+                // Disable resizing the window for now
+                resizable: false,
                 ..default()
             },
             ..default()
         }))
+        // Only run the app when there is user input. This will significantly reduce CPU/GPU use.
+        .insert_resource(WinitSettings::desktop_app())
+        .add_system(mouse_click)
+        .insert_resource(ChessPieces { pieces: [0; 64] })
+        .insert_resource(BevyCounter { count: 0 })
+        .add_event::<MoveEvent>()
         .add_startup_system(setup)
         .run();
 }
