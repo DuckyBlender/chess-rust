@@ -76,7 +76,7 @@ fn setup(
     for x in 0..8 {
         commands.spawn(Text2dBundle {
             // Convert numbers to letters
-            text: Text::from_section(&((x + 65) as u8 as char).to_string(), text_style.clone())
+            text: Text::from_section(((x + 65) as u8 as char).to_string(), text_style.clone())
                 .with_alignment(TextAlignment {
                     vertical: VerticalAlign::Center,
                     horizontal: HorizontalAlign::Center,
@@ -93,7 +93,7 @@ fn setup(
     // NUMBERS TO THE LEFT OF BOARD
     for y in 0..8 {
         commands.spawn(Text2dBundle {
-            text: Text::from_section(&(y + 1).to_string(), text_style.clone()).with_alignment(
+            text: Text::from_section((y + 1).to_string(), text_style.clone()).with_alignment(
                 TextAlignment {
                     vertical: VerticalAlign::Center,
                     horizontal: HorizontalAlign::Center,
@@ -114,7 +114,6 @@ fn setup(
     // Setup the piece locations in a 1d array
     let mut square: [u8; 64] = [0; 64];
     // Initialize the board with the FEN string
-    
 
     println!("{:?}", square[1]);
 
@@ -128,42 +127,134 @@ fn setup(
     piece_type_from_symbol.insert('q', PieceType::Queen);
     piece_type_from_symbol.insert('k', PieceType::King);
 
-
-    commands.spawn(SpriteBundle {
-        texture: asset_server.load("pieces/white-pawn.png"),
-        transform: Transform::from_translation(Vec3::new(
-            0.0 * SQUARE_SIZE,
-            1.0 * SQUARE_SIZE,
-            0.0,
-        )),
-        ..Default::default()
-    });
-
     // TODO: Setup the pieces from the FEN string
-    // load_position_from_fen();
+    load_position_from_fen(
+        &mut commands,
+        &mut meshes,
+        &mut materials,
+        &mut square,
+        asset_server,
+    );
 }
 
+fn load_position_from_fen(
+    commands: &mut Commands,
+    meshes: &mut ResMut<Assets<Mesh>>,
+    materials: &mut ResMut<Assets<ColorMaterial>>,
+    square: &mut [u8; 64],
+    asset_server: Res<AssetServer>,
+) {
+    // Setup the piece locations in a 1d array
+    // let mut square: [u8; 64] = [0; 64];
+    // Initialize the board with the FEN string
+    let mut x: usize = 0;
+    let mut y: usize = 0;
+    for char in START_FEN.chars() {
+        if char == '/' {
+            x = 0;
+            y += 1;
+            continue;
+        }
+
+        if char.is_ascii_digit() {
+            x += char.to_digit(10).unwrap() as usize;
+            continue;
+        }
+
+        let piece_type = match char {
+            'p' => PieceType::Pawn,
+            'n' => PieceType::Knight,
+            'b' => PieceType::Bishop,
+            'r' => PieceType::Rook,
+            'q' => PieceType::Queen,
+            'k' => PieceType::King,
+            _ => PieceType::None,
+        };
+
+        let piece_color = if char.is_lowercase() {
+            PieceColor::White
+        } else {
+            PieceColor::Black
+        };
+
+        let piece = (piece_type as u8) | (piece_color as u8);
+        square[y * 8 + x] = piece;
+
+        let piece_color = if char.is_lowercase() {
+            Color::ORANGE
+        } else {
+            Color::RED
+        };
+
+        let square_position = Vec3::new(x as f32 * SQUARE_SIZE, y as f32 * SQUARE_SIZE, 1.0);
+        draw_piece(
+            commands,
+            piece_type,
+            piece_color,
+            square_position,
+            meshes,
+            materials,
+            &asset_server,
+        );
+        x += 1;
+    }
+}
+
+fn draw_piece(
+    commands: &mut Commands,
+    piece_type: PieceType,
+    piece_color: Color,
+    square_position: Vec3,
+    meshes: &mut ResMut<Assets<Mesh>>,
+    materials: &mut ResMut<Assets<ColorMaterial>>,
+    asset_server: &Res<AssetServer>,
+) {
+    // For now, just spawn a letter with the piece type
+    let text_style = TextStyle {
+        font: asset_server.load("fonts/Lexend-Regular.ttf"),
+        font_size: SQUARE_SIZE * PIECE_SIZE,
+        color: piece_color,
+    };
+    let piece_prefix = match piece_type {
+        PieceType::Pawn => "p",
+        PieceType::Knight => "n",
+        PieceType::Bishop => "b",
+        PieceType::Rook => "r",
+        PieceType::Queen => "q",
+        PieceType::King => "k",
+        PieceType::None => "#",
+    };
+    commands.spawn(Text2dBundle {
+        text: Text::from_section(piece_prefix, text_style).with_alignment(TextAlignment {
+            vertical: VerticalAlign::Center,
+            horizontal: HorizontalAlign::Center,
+        }),
+        transform: Transform::from_translation(square_position),
+        ..default()
+    });
+
+    // commands.spawn(MaterialMesh2dBundle {
+    //     mesh: meshes.add(Mesh::from(shape::Quad::default())).into(),
+    //     material: materials.add(piece_color.into()),
+    //     transform: Transform::from_translation(square_position).with_scale(Vec3::splat(SQUARE_SIZE * PIECE_SIZE)),
+    //     ..Default::default()
+    // });
+}
 
 // TODO: Finish this function
 // fn translate_square_to_position(square: String) -> Vec3 {
-    // Convert the square to a position
-    // There are 8 squares per row
-    // Start from the top left corner (X: 0, Y: BLOCK_SIZE * 8)
-    // The square is represented by a number (0-63)
+// Convert the square to a position
+// There are 8 squares per row
+// Start from the top left corner (X: 0, Y: BLOCK_SIZE * 8)
+// The square is represented by a number (0-63)
 
-    // println!("pos: {}, x: {}, y: {}", square, x, y);
-    // Vec3::new(x as f32, y as f32, 0.0)
+// println!("pos: {}, x: {}, y: {}", square, x, y);
+// Vec3::new(x as f32, y as f32, 0.0)
 // }
 
-
 // TODO: Update the board when a move event has been triggered
-fn update_board() {
-}
-
-
-// TODO: Load the position from the FEN string
-fn load_position_from_fen() {
-}
+// fn update_board() {
+// }
 
 fn draw_square(
     commands: &mut Commands,
