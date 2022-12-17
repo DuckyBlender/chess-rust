@@ -2,7 +2,6 @@ use bevy::{
     prelude::*, 
     sprite::MaterialMesh2dBundle,
     input::mouse::{MouseMotion, MouseButtonInput},
-    diagnostic::{FrameTimeDiagnosticsPlugin},
     winit::WinitSettings,
 };
 
@@ -276,20 +275,45 @@ fn mouse_click(
     let win = windows.get_primary().expect("no primary window");
     if mouse_button_input.just_pressed(MouseButton::Left) {
         counter.count += 1;
-        println!("click at {:?}, clicked {} times", win.cursor_position(), counter.count);
+        //println!("click at {:?}, clicked {} times", win.cursor_position(), counter.count);
         // Check if the mouse is over a piece
         // If so, print the piece type and color
         let mouse_pos = win.cursor_position();
-        // Convert the mouse position to a square
         // First, we need to get the mouse pos variable out of the Option
         let mouse_pos = mouse_pos.unwrap();
-        let x = (mouse_pos.x / SQUARE_SIZE - 1.0) as usize;
-        let y = (mouse_pos.y / SQUARE_SIZE - 1.0) as usize;
-        if x > 7 || y > 7 {
+        // Then, we need to convert the mouse position to a square
+        let x = mouse_pos.x / SQUARE_SIZE - 1.0;
+        let y = mouse_pos.y / SQUARE_SIZE - 1.0;
+        // Check if the mouse is over the board
+        if !(0.0..=8.0).contains(&x as &f32) || !(0.0..=8.0).contains(&y as &f32) {
             return;
         }
+        // Convert the float to an int
+        let x = x as usize;
+        let y = y as usize;
+        // Get the piece at that square
         let piece = piece_locations.pieces[y * 8 + x];
-        println!("x: {}, y: {} = {:?}", x, y, piece);
+        // Convert the id to a string
+        let piece_name = match piece {
+            0 => "None",
+            9 => "White King",
+            10 => "White Pawn",
+            11 => "White Knight",
+            12 => "White Bishop",
+            13 => "White Rook",
+            14 => "White Queen",
+            17 => "Black King",
+            18 => "Black Pawn",
+            19 => "Black Knight",
+            20 => "Black Bishop",
+            21 => "Black Rook",
+            22 => "Black Queen",
+            _ => "Unknown",
+        };
+
+        println!("x: {}, y: {} = {:?} ({})", x, y, piece, piece_name);
+        // TODO: Add dragging the pieces
+        
     }
 }
 
