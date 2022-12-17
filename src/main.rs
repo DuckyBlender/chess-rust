@@ -3,7 +3,7 @@ use bevy::{prelude::*, sprite::MaterialMesh2dBundle};
 use std::collections::HashMap;
 
 const SQUARE_SIZE: f32 = 60.0;
-const PIECE_SIZE: f32 = 0.9;
+const PIECE_SIZE: f32 = 1.0;
 const START_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR";
 
 const LIGHT_COL: Color = Color::rgb(1.0, 1.0, 1.0);
@@ -215,7 +215,7 @@ fn draw_piece(
     // Spawn the piece
     commands.spawn(SpriteBundle {
         texture: asset_server.load(piece_img),
-        transform: Transform::from_translation(square_position),
+        transform: Transform::from_translation(square_position).with_scale(Vec3::splat(PIECE_SIZE)),
         ..Default::default()
     });
 }
