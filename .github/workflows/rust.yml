@@ -22,5 +22,3 @@ jobs:
         run: sudo apt-get install libssl-dev pkg-config libasound2-dev libudev-dev -y
       - name: Build project
         run: cargo build --release
-      - name: Test project
-        run: cargo test

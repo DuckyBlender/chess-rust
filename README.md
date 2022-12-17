@@ -5,7 +5,8 @@ Simple multiplayer chess made 100% in Rust using the Bevy Game Engine (WIP)
 - [x] Create the board
 - [x] Center the camera
 - [x] Generate the pieces from the FEN 
-- [ ] Move the pieces
+- [ ] Detect when a mouse click is above a piece
+- [ ] Move the piece
 - [ ] Implement all the quirks of chess
 - [ ] Implement multiplayer
 - [ ] Much, much more

@@ -1,9 +1,10 @@
 use bevy::{
-    prelude::*, 
+    input::mouse::{MouseButtonInput, MouseMotion},
+    prelude::*,
     sprite::MaterialMesh2dBundle,
-    input::mouse::{MouseMotion, MouseButtonInput},
-    winit::WinitSettings,
+    winit::WinitSettings, render::camera::RenderTarget,
 };
+use bevy_inspector_egui::WorldInspectorPlugin;
 
 const SQUARE_SIZE: f32 = 60.0;
 const PIECE_SIZE: f32 = 1.0;
@@ -12,7 +13,7 @@ const START_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR";
 const LIGHT_COL: Color = Color::rgb(1.0, 1.0, 1.0);
 const DARK_COL: Color = Color::rgb(0.3, 0.3, 0.3);
 
-#[derive(Resource)]
+#[derive(Resource, Debug)]
 struct BevyCounter {
     pub count: usize,
 }
@@ -63,8 +64,8 @@ fn setup(
     // Setup camera at coordinate (4*30, 4*30)
     commands.spawn(Camera2dBundle {
         transform: Transform::from_translation(Vec3::new(
-            4.0 * SQUARE_SIZE - SQUARE_SIZE / 2.0,
-            4.0 * SQUARE_SIZE - SQUARE_SIZE / 2.0,
+            4.0 * SQUARE_SIZE,
+            4.0 * SQUARE_SIZE,
             // The camera is going to be very high up so that nothing is above it
             500.0,
         )),
@@ -80,7 +81,7 @@ fn setup(
 
             let square_color = if is_light_square { LIGHT_COL } else { DARK_COL };
             let square_position =
-                Vec3::new(column as f32 * SQUARE_SIZE, row as f32 * SQUARE_SIZE, 0.0);
+                Vec3::new(column as f32 * SQUARE_SIZE + SQUARE_SIZE / 2.0, row as f32 * SQUARE_SIZE + SQUARE_SIZE / 2.0, 0.0);
             draw_square(
                 &mut commands,
                 square_color,
@@ -98,17 +99,17 @@ fn setup(
         font_size: 30.0,
         color: Color::ORANGE,
     };
-    for x in 0..8 {
+    for x in 1..=8 {
         commands.spawn(Text2dBundle {
             // Convert numbers to letters
-            text: Text::from_section(((x + 65) as u8 as char).to_string(), text_style.clone())
+            text: Text::from_section(((x + 64) as u8 as char).to_string(), text_style.clone())
                 .with_alignment(TextAlignment {
                     vertical: VerticalAlign::Center,
                     horizontal: HorizontalAlign::Center,
                 }),
             transform: Transform::from_translation(Vec3::new(
-                x as f32 * SQUARE_SIZE,
-                -SQUARE_SIZE,
+                x as f32 * SQUARE_SIZE - SQUARE_SIZE / 2.0,
+                -SQUARE_SIZE / 2.0,
                 0.0,
             )),
             ..Default::default()
@@ -116,17 +117,17 @@ fn setup(
     }
 
     // NUMBERS TO THE LEFT OF BOARD
-    for y in 0..8 {
+    for y in 1..=8 {
         commands.spawn(Text2dBundle {
-            text: Text::from_section((y + 1).to_string(), text_style.clone()).with_alignment(
+            text: Text::from_section(y.to_string(), text_style.clone()).with_alignment(
                 TextAlignment {
                     vertical: VerticalAlign::Center,
                     horizontal: HorizontalAlign::Center,
                 },
             ),
             transform: Transform::from_translation(Vec3::new(
-                -SQUARE_SIZE,
-                y as f32 * SQUARE_SIZE,
+                -SQUARE_SIZE / 2.0,
+                y as f32 * SQUARE_SIZE - SQUARE_SIZE / 2.0,
                 0.0,
             )),
             ..Default::default()
@@ -185,7 +186,7 @@ fn load_position_from_fen(
         piece_locations[y * 8 + x] = piece;
         println!("{:?} | {:?} = {}", piece_type, piece_color, piece);
 
-        let square_position = Vec3::new(x as f32 * SQUARE_SIZE, y as f32 * SQUARE_SIZE, 1.0);
+        let square_position = Vec3::new(x as f32 * SQUARE_SIZE + SQUARE_SIZE / 2.0, y as f32 * SQUARE_SIZE + SQUARE_SIZE / 2.0, 1.0);
         draw_piece(
             commands,
             piece_type,
@@ -193,7 +194,7 @@ fn load_position_from_fen(
             square_position,
             &asset_server,
         );
-        
+
         x += 1;
     }
     println!("PIECE LOCATIONS:\n{:?}", piece_locations)
@@ -229,7 +230,7 @@ fn draw_piece(
         texture: asset_server.load(piece_img),
         transform: Transform::from_translation(square_position).with_scale(Vec3::splat(PIECE_SIZE)),
         ..Default::default()
-    });
+    }).insert(Piece);
 }
 
 // TODO: Finish this function
@@ -263,57 +264,65 @@ fn draw_square(
 }
 
 // TODO: Implement dragging the pieces, and moving them to the closest square on release
-
-// For now, just print a line if the mouse is clicked with the coordinates and the piece at that square
-fn mouse_click(
+fn my_cursor_system(
+    // need to get window dimensions and cursor position
+    wnds: Res<Windows>,
+    // need to get mouse button input
     mouse_button_input: Res<Input<MouseButton>>,
-    windows: Res<Windows>,
-    mut counter: ResMut<BevyCounter>,
-    // Mut for now so that we can change the piece locations in the future
-    piece_locations: Res<ChessPieces>,
+    // query to get camera transform
+    q_camera: Query<(&Camera, &GlobalTransform)>,
+    // query to get all sprites with the Piece component
+    mut q_pieces: Query<(&Sprite, &mut Transform, With<Piece>)>,
 ) {
-    let win = windows.get_primary().expect("no primary window");
-    if mouse_button_input.just_pressed(MouseButton::Left) {
-        counter.count += 1;
-        //println!("click at {:?}, clicked {} times", win.cursor_position(), counter.count);
-        // Check if the mouse is over a piece
-        // If so, print the piece type and color
-        let mouse_pos = win.cursor_position();
-        // First, we need to get the mouse pos variable out of the Option
-        let mouse_pos = mouse_pos.unwrap();
-        // Then, we need to convert the mouse position to a square
-        let x = mouse_pos.x / SQUARE_SIZE - 1.0;
-        let y = mouse_pos.y / SQUARE_SIZE - 1.0;
-        // Check if the mouse is over the board
-        if !(0.0..=8.0).contains(&x as &f32) || !(0.0..=8.0).contains(&y as &f32) {
-            return;
-        }
-        // Convert the float to an int
-        let x = x as usize;
-        let y = y as usize;
-        // Get the piece at that square
-        let piece = piece_locations.pieces[y * 8 + x];
-        // Convert the id to a string
-        let piece_name = match piece {
-            0 => "None",
-            9 => "White King",
-            10 => "White Pawn",
-            11 => "White Knight",
-            12 => "White Bishop",
-            13 => "White Rook",
-            14 => "White Queen",
-            17 => "Black King",
-            18 => "Black Pawn",
-            19 => "Black Knight",
-            20 => "Black Bishop",
-            21 => "Black Rook",
-            22 => "Black Queen",
-            _ => "Unknown",
-        };
+    // only run if the mouse is pressed
+    if !mouse_button_input.just_pressed(MouseButton::Left) {
+        return;
+    }
+    // get the camera info and transform
+    // assuming there is exactly one main camera entity, so query::single() is OK
+    let (camera, camera_transform) = q_camera.single();
 
-        println!("x: {}, y: {} = {:?} ({})", x, y, piece, piece_name);
-        // TODO: Add dragging the pieces
-        
+    // get the window that the camera is displaying to (or the primary window)
+    let wnd = if let RenderTarget::Window(id) = camera.target {
+        wnds.get(id).unwrap()
+    } else {
+        wnds.get_primary().unwrap()
+    };
+
+    // check if the cursor is inside the window and get its position
+    if let Some(screen_pos) = wnd.cursor_position() {
+        // get the size of the window
+        let window_size = Vec2::new(wnd.width(), wnd.height());
+
+        // convert screen position [0..resolution] to ndc [-1..1] (gpu coordinates)
+        let ndc = (screen_pos / window_size) * 2.0 - Vec2::ONE;
+
+        // matrix for undoing the projection and camera transform
+        let ndc_to_world = camera_transform.compute_matrix() * camera.projection_matrix().inverse();
+
+        // use it to convert ndc to world-space coordinates
+        let world_pos = ndc_to_world.project_point3(ndc.extend(-1.0));
+
+        // reduce it to a 2D value
+        let world_pos: Vec2 = world_pos.truncate().round();
+
+        eprintln!("World coords: {}/{}", world_pos.x, world_pos.y);
+
+        // Move the piece closest to the mouse position to the mouse position
+        for (sprite, mut transform, _) in q_pieces.iter_mut() {
+            // Get the position of the piece
+            let piece_pos = transform.translation;
+
+            // Get the distance between the piece and the mouse position
+            let distance = (piece_pos - world_pos.extend(1.0)).length();
+            // If the distance is less than the size of the piece, move the piece to the mouse position
+            if distance < SQUARE_SIZE {
+                transform.translation = world_pos.extend(2.0);
+                eprintln!("Moved piece to {}/{}", world_pos.x, world_pos.y)
+            }
+        }
+
+
     }
 }
 
@@ -325,14 +334,19 @@ fn main() {
                 width: SQUARE_SIZE * 10.0,
                 height: SQUARE_SIZE * 10.0,
                 // Disable resizing the window for now
-                resizable: false,
+                resizable: true,
                 ..default()
             },
             ..default()
         }))
         // Only run the app when there is user input. This will significantly reduce CPU/GPU use.
         .insert_resource(WinitSettings::desktop_app())
-        .add_system(mouse_click)
+        .add_plugin(WorldInspectorPlugin::new())
+        // .add_system(mouse_click)
+        .add_system(my_cursor_system)
+        // Antialiasing
+        .insert_resource(Msaa { samples: 4 })
+        .add_system(bevy::window::close_on_esc)
         .insert_resource(ChessPieces { pieces: [0; 64] })
         .insert_resource(BevyCounter { count: 0 })
         .add_event::<MoveEvent>()
