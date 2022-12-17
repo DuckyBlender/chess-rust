@@ -42,6 +42,7 @@ fn setup(
         transform: Transform::from_translation(Vec3::new(
             4.0 * SQUARE_SIZE - SQUARE_SIZE / 2.0,
             4.0 * SQUARE_SIZE - SQUARE_SIZE / 2.0,
+            // The camera is going to be very high up so that nothing is above it
             500.0,
         )),
         ..Default::default()
@@ -51,6 +52,7 @@ fn setup(
     // let mut board = Vec::new();
     for row in 0..8 {
         for column in 0..8 {
+            // Check if the square is supposed to be light or dark
             let is_light_square: bool = (row + column) % 2 != 0;
 
             let square_color = if is_light_square { LIGHT_COL } else { DARK_COL };
@@ -112,10 +114,10 @@ fn setup(
     // let mut piece_locations: HashMap<String, String> = HashMap::new();
 
     // Setup the piece locations in a 1d array
-    let mut square: [u8; 64] = [0; 64];
+    let mut piece_locations: [u8; 64] = [0; 64];
     // Initialize the board with the FEN string
 
-    println!("{:?}", square[1]);
+    println!("{:?}", piece_locations[1]);
 
     // For now, manually update the board with the piece
     // Create a hashmap with the piece prefixes
@@ -128,35 +130,27 @@ fn setup(
     piece_type_from_symbol.insert('k', PieceType::King);
 
     // TODO: Setup the pieces from the FEN string
-    load_position_from_fen(
-        &mut commands,
-        &mut meshes,
-        &mut materials,
-        &mut square,
-        asset_server,
-    );
+    load_position_from_fen(&mut commands, &mut piece_locations, asset_server);
 }
 
 fn load_position_from_fen(
     commands: &mut Commands,
-    meshes: &mut ResMut<Assets<Mesh>>,
-    materials: &mut ResMut<Assets<ColorMaterial>>,
-    square: &mut [u8; 64],
+    piece_locations: &mut [u8; 64],
     asset_server: Res<AssetServer>,
 ) {
-    // Setup the piece locations in a 1d array
-    // let mut square: [u8; 64] = [0; 64];
     // Initialize the board with the FEN string
     let mut x: usize = 0;
     let mut y: usize = 0;
     for char in START_FEN.chars() {
         if char == '/' {
+            // Move to the next row
             x = 0;
             y += 1;
             continue;
         }
 
         if char.is_ascii_digit() {
+            // Skip the number of empty squares
             x += char.to_digit(10).unwrap() as usize;
             continue;
         }
@@ -171,29 +165,21 @@ fn load_position_from_fen(
             _ => PieceType::None,
         };
 
-        let piece_color_enum = if char.is_lowercase() {
+        let piece_color = if char.is_lowercase() {
             PieceColor::White
         } else {
             PieceColor::Black
         };
 
-        let piece = (piece_type as u8) | (piece_color_enum as u8);
-        square[y * 8 + x] = piece;
-
-        let piece_color = if char.is_lowercase() {
-            Color::ORANGE
-        } else {
-            Color::RED
-        };
+        let piece = (piece_type as u8) | (piece_color as u8);
+        piece_locations[y * 8 + x] = piece;
 
         let square_position = Vec3::new(x as f32 * SQUARE_SIZE, y as f32 * SQUARE_SIZE, 1.0);
         draw_piece(
             commands,
             piece_type,
-            piece_color_enum,
+            piece_color,
             square_position,
-            meshes,
-            materials,
             &asset_server,
         );
         x += 1;
@@ -205,8 +191,6 @@ fn draw_piece(
     piece_type: PieceType,
     piece_color: PieceColor,
     square_position: Vec3,
-    meshes: &mut ResMut<Assets<Mesh>>,
-    materials: &mut ResMut<Assets<ColorMaterial>>,
     asset_server: &Res<AssetServer>,
 ) {
     // Map the piece type to the correct image
