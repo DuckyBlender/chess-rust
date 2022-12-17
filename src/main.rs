@@ -155,7 +155,7 @@ fn load_position_from_fen(
             continue;
         }
 
-        let piece_type = match char {
+        let piece_type = match char.to_ascii_lowercase() {
             'p' => PieceType::Pawn,
             'n' => PieceType::Knight,
             'b' => PieceType::Bishop,
@@ -201,7 +201,7 @@ fn draw_piece(
         (PieceType::Rook, PieceColor::White) => "white-rook.png",
         (PieceType::Queen, PieceColor::White) => "white-queen.png",
         (PieceType::King, PieceColor::White) => "white-king.png",
-        (PieceType::Pawn, PieceColor::Black) => "white-pawn.png",
+        (PieceType::Pawn, PieceColor::Black) => "black-pawn.png",
         (PieceType::Knight, PieceColor::Black) => "black-knight.png",
         (PieceType::Bishop, PieceColor::Black) => "black-bishop.png",
         (PieceType::Rook, PieceColor::Black) => "black-rook.png",
