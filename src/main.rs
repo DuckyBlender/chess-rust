@@ -171,13 +171,13 @@ fn load_position_from_fen(
             _ => PieceType::None,
         };
 
-        let piece_color = if char.is_lowercase() {
+        let piece_color_enum = if char.is_lowercase() {
             PieceColor::White
         } else {
             PieceColor::Black
         };
 
-        let piece = (piece_type as u8) | (piece_color as u8);
+        let piece = (piece_type as u8) | (piece_color_enum as u8);
         square[y * 8 + x] = piece;
 
         let piece_color = if char.is_lowercase() {
@@ -190,7 +190,7 @@ fn load_position_from_fen(
         draw_piece(
             commands,
             piece_type,
-            piece_color,
+            piece_color_enum,
             square_position,
             meshes,
             materials,
@@ -203,42 +203,37 @@ fn load_position_from_fen(
 fn draw_piece(
     commands: &mut Commands,
     piece_type: PieceType,
-    piece_color: Color,
+    piece_color: PieceColor,
     square_position: Vec3,
     meshes: &mut ResMut<Assets<Mesh>>,
     materials: &mut ResMut<Assets<ColorMaterial>>,
     asset_server: &Res<AssetServer>,
 ) {
-    // For now, just spawn a letter with the piece type
-    let text_style = TextStyle {
-        font: asset_server.load("fonts/Lexend-Regular.ttf"),
-        font_size: SQUARE_SIZE * PIECE_SIZE,
-        color: piece_color,
+    // Map the piece type to the correct image
+    let piece_img = match (&piece_type, &piece_color) {
+        (PieceType::Pawn, PieceColor::White) => "white-pawn.png",
+        (PieceType::Knight, PieceColor::White) => "white-knight.png",
+        (PieceType::Bishop, PieceColor::White) => "white-bishop.png",
+        (PieceType::Rook, PieceColor::White) => "white-rook.png",
+        (PieceType::Queen, PieceColor::White) => "white-queen.png",
+        (PieceType::King, PieceColor::White) => "white-king.png",
+        (PieceType::Pawn, PieceColor::Black) => "white-pawn.png",
+        (PieceType::Knight, PieceColor::Black) => "black-knight.png",
+        (PieceType::Bishop, PieceColor::Black) => "black-bishop.png",
+        (PieceType::Rook, PieceColor::Black) => "black-rook.png",
+        (PieceType::Queen, PieceColor::Black) => "black-queen.png",
+        (PieceType::King, PieceColor::Black) => "black-king.png",
+        (PieceType::None, _) => "crong.png",
     };
-    let piece_prefix = match piece_type {
-        PieceType::Pawn => "p",
-        PieceType::Knight => "n",
-        PieceType::Bishop => "b",
-        PieceType::Rook => "r",
-        PieceType::Queen => "q",
-        PieceType::King => "k",
-        PieceType::None => "#",
-    };
-    commands.spawn(Text2dBundle {
-        text: Text::from_section(piece_prefix, text_style).with_alignment(TextAlignment {
-            vertical: VerticalAlign::Center,
-            horizontal: HorizontalAlign::Center,
-        }),
-        transform: Transform::from_translation(square_position),
-        ..default()
-    });
+    // Add the path to the image
+    let piece_img = format!("pieces/{}", &piece_img);
 
-    // commands.spawn(MaterialMesh2dBundle {
-    //     mesh: meshes.add(Mesh::from(shape::Quad::default())).into(),
-    //     material: materials.add(piece_color.into()),
-    //     transform: Transform::from_translation(square_position).with_scale(Vec3::splat(SQUARE_SIZE * PIECE_SIZE)),
-    //     ..Default::default()
-    // });
+    // Spawn the piece
+    commands.spawn(SpriteBundle {
+        texture: asset_server.load(piece_img),
+        transform: Transform::from_translation(square_position),
+        ..Default::default()
+    });
 }
 
 // TODO: Finish this function
