@@ -1,8 +1,9 @@
 use bevy::{
     input::mouse::{MouseButtonInput, MouseMotion},
     prelude::*,
+    render::camera::RenderTarget,
     sprite::MaterialMesh2dBundle,
-    winit::WinitSettings, render::camera::RenderTarget,
+    winit::WinitSettings,
 };
 use bevy_inspector_egui::WorldInspectorPlugin;
 
@@ -15,6 +16,9 @@ const DARK_COL: Color = Color::rgb(0.3, 0.3, 0.3);
 
 #[derive(Component, Debug)]
 struct Piece;
+
+#[derive(Component, Debug)]
+struct DraggedPiece;
 
 #[derive(Component, Debug)]
 struct Square;
@@ -70,8 +74,11 @@ fn setup(
             let is_light_square: bool = (row + column) % 2 != 0;
 
             let square_color = if is_light_square { LIGHT_COL } else { DARK_COL };
-            let square_position =
-                Vec3::new(column as f32 * SQUARE_SIZE + SQUARE_SIZE / 2.0, row as f32 * SQUARE_SIZE + SQUARE_SIZE / 2.0, 0.0);
+            let square_position = Vec3::new(
+                column as f32 * SQUARE_SIZE + SQUARE_SIZE / 2.0,
+                row as f32 * SQUARE_SIZE + SQUARE_SIZE / 2.0,
+                0.0,
+            );
             draw_square(
                 &mut commands,
                 square_color,
@@ -176,7 +183,11 @@ fn load_position_from_fen(
         piece_locations[y * 8 + x] = piece;
         println!("{:?} | {:?} = {}", piece_type, piece_color, piece);
 
-        let square_position = Vec3::new(x as f32 * SQUARE_SIZE + SQUARE_SIZE / 2.0, y as f32 * SQUARE_SIZE + SQUARE_SIZE / 2.0, 1.0);
+        let square_position = Vec3::new(
+            x as f32 * SQUARE_SIZE + SQUARE_SIZE / 2.0,
+            y as f32 * SQUARE_SIZE + SQUARE_SIZE / 2.0,
+            1.0,
+        );
         draw_piece(
             commands,
             piece_type,
@@ -216,11 +227,14 @@ fn draw_piece(
     // Add the path to the image
     let piece_img = format!("pieces/{}", &piece_img);
 
-    commands.spawn(SpriteBundle {
-        texture: asset_server.load(piece_img),
-        transform: Transform::from_translation(square_position).with_scale(Vec3::splat(PIECE_SIZE)),
-        ..Default::default()
-    }).insert(Piece);
+    commands
+        .spawn(SpriteBundle {
+            texture: asset_server.load(piece_img),
+            transform: Transform::from_translation(square_position)
+                .with_scale(Vec3::splat(PIECE_SIZE)),
+            ..Default::default()
+        })
+        .insert(Piece);
 }
 
 // TODO: Finish this function
@@ -243,15 +257,17 @@ fn draw_square(
     materials: &mut ResMut<Assets<ColorMaterial>>,
 ) {
     // Draw the square with the "Square" component
-    commands.spawn(MaterialMesh2dBundle {
-        material: materials.add(square_color.into()),
-        mesh: bevy::sprite::Mesh2dHandle(meshes.add(Mesh::from(shape::Quad {
-            size: Vec2::new(SQUARE_SIZE, SQUARE_SIZE),
-            flip: false,
-        }))),
-        transform: Transform::from_translation(square_position),
-        ..Default::default()
-    }).insert(Square);
+    commands
+        .spawn(MaterialMesh2dBundle {
+            material: materials.add(square_color.into()),
+            mesh: bevy::sprite::Mesh2dHandle(meshes.add(Mesh::from(shape::Quad {
+                size: Vec2::new(SQUARE_SIZE, SQUARE_SIZE),
+                flip: false,
+            }))),
+            transform: Transform::from_translation(square_position),
+            ..Default::default()
+        })
+        .insert(Square);
 }
 
 // TODO: Implement dragging the pieces, and moving them to the closest square on release
@@ -265,10 +281,6 @@ fn my_cursor_system(
     // query to get all sprites with the Piece component
     mut q_pieces: Query<(&mut Transform, With<Piece>)>,
 ) {
-    // only run if the mouse is pressed
-    if !mouse_button_input.just_pressed(MouseButton::Left) {
-        return;
-    }
     // get the camera info and transform
     // assuming there is exactly one main camera entity, so query::single() is OK
     let (camera, camera_transform) = q_camera.single();
@@ -298,8 +310,27 @@ fn my_cursor_system(
         let world_pos: Vec2 = world_pos.truncate().round();
 
         eprintln!("World coords: {}/{}", world_pos.x, world_pos.y);
-        
 
+        // Now that the translated cursor position is known, start handling piece dragging
+        // If the left mouse button is pressed, check if a piece is under the cursor
+        if mouse_button_input.just_pressed(MouseButton::Left) {
+            // Check if there is a piece under the cursor, if there is, despawn it and spawn a new one with the DraggedPiece component. This will allow the piece to be dragged around the screen. When the mouse button is released, the piece will be once again despawned and a new one will be spawned in the square that the cursor is without the DraggedPiece component.
+            println!("Left mouse button pressed");
+            // Check if there is a piece under the cursor
+            for (mut transform, _) in q_pieces.iter_mut() {
+                // Check if the cursor is over the piece with an error of SQUARE_SIZE / 2.0
+                if transform.translation.x - SQUARE_SIZE / 2.0 < world_pos.x
+                    && transform.translation.x + SQUARE_SIZE / 2.0 > world_pos.x
+                    && transform.translation.y - SQUARE_SIZE / 2.0 < world_pos.y
+                    && transform.translation.y + SQUARE_SIZE / 2.0 > world_pos.y
+                {
+                    // Despawn the piece
+                    println!("Despawning piece");
+                    transform.translation = Vec3::new(0.0, 0.0, 0.0);
+                }
+            }
+            
+        }
     }
 }
 
