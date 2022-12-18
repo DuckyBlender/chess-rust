@@ -13,27 +13,17 @@ const START_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR";
 const LIGHT_COL: Color = Color::rgb(1.0, 1.0, 1.0);
 const DARK_COL: Color = Color::rgb(0.3, 0.3, 0.3);
 
-#[derive(Resource, Debug)]
-struct BevyCounter {
-    pub count: usize,
-}
-
 #[derive(Component, Debug)]
 struct Piece;
+
+#[derive(Component, Debug)]
+struct Square;
 
 #[derive(Resource, Debug, Deref, DerefMut)]
 struct ChessPieces {
     // Create a 1d array of 64 u8 values
     pub pieces: [u8; 64],
 }
-
-// let mut piece_locations: [u8; 64] = [0; 64];
-// #[derive(Component, Default)]
-// struct Draggable;
-
-// Chess piece resource
-// #[derive(Resource, Default, Debug, Deref, DerefMut)]
-// struct ChessPieces(Vec<Entity>);
 
 struct MoveEvent;
 
@@ -252,6 +242,7 @@ fn draw_square(
     meshes: &mut ResMut<Assets<Mesh>>,
     materials: &mut ResMut<Assets<ColorMaterial>>,
 ) {
+    // Draw the square with the "Square" component
     commands.spawn(MaterialMesh2dBundle {
         material: materials.add(square_color.into()),
         mesh: bevy::sprite::Mesh2dHandle(meshes.add(Mesh::from(shape::Quad {
@@ -260,7 +251,7 @@ fn draw_square(
         }))),
         transform: Transform::from_translation(square_position),
         ..Default::default()
-    });
+    }).insert(Square);
 }
 
 // TODO: Implement dragging the pieces, and moving them to the closest square on release
@@ -272,7 +263,7 @@ fn my_cursor_system(
     // query to get camera transform
     q_camera: Query<(&Camera, &GlobalTransform)>,
     // query to get all sprites with the Piece component
-    mut q_pieces: Query<(&Sprite, &mut Transform, With<Piece>)>,
+    mut q_pieces: Query<(&mut Transform, With<Piece>)>,
 ) {
     // only run if the mouse is pressed
     if !mouse_button_input.just_pressed(MouseButton::Left) {
@@ -307,21 +298,7 @@ fn my_cursor_system(
         let world_pos: Vec2 = world_pos.truncate().round();
 
         eprintln!("World coords: {}/{}", world_pos.x, world_pos.y);
-
-        // Move the piece closest to the mouse position to the mouse position
-        for (sprite, mut transform, _) in q_pieces.iter_mut() {
-            // Get the position of the piece
-            let piece_pos = transform.translation;
-
-            // Get the distance between the piece and the mouse position
-            let distance = (piece_pos - world_pos.extend(1.0)).length();
-            // If the distance is less than the size of the piece, move the piece to the mouse position
-            if distance < SQUARE_SIZE {
-                transform.translation = world_pos.extend(2.0);
-                eprintln!("Moved piece to {}/{}", world_pos.x, world_pos.y)
-            }
-        }
-
+        
 
     }
 }
@@ -333,7 +310,6 @@ fn main() {
                 title: "Rust Chess".to_string(),
                 width: SQUARE_SIZE * 10.0,
                 height: SQUARE_SIZE * 10.0,
-                // Disable resizing the window for now
                 resizable: true,
                 ..default()
             },
@@ -348,7 +324,6 @@ fn main() {
         .insert_resource(Msaa { samples: 4 })
         .add_system(bevy::window::close_on_esc)
         .insert_resource(ChessPieces { pieces: [0; 64] })
-        .insert_resource(BevyCounter { count: 0 })
         .add_event::<MoveEvent>()
         .add_startup_system(setup)
         .run();
