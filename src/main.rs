@@ -1,5 +1,4 @@
 use bevy::{
-    input::mouse::{MouseButtonInput, MouseMotion},
     prelude::*,
     render::camera::RenderTarget,
     sprite::MaterialMesh2dBundle,
@@ -86,7 +85,7 @@ trait GetPieceImage {
 impl GetPieceImage for ChessPieces {
     fn get_piece_image(&self, index: usize) -> &str {
         let (piece_type, piece_color) = self.get_piece_type(index);
-        let piece_img = match (&piece_type, &piece_color) {
+        match (&piece_type, &piece_color) {
             (PieceType::Pawn, PieceColor::White) => "white-pawn.png",
             (PieceType::Knight, PieceColor::White) => "white-knight.png",
             (PieceType::Bishop, PieceColor::White) => "white-bishop.png",
@@ -100,8 +99,7 @@ impl GetPieceImage for ChessPieces {
             (PieceType::Queen, PieceColor::Black) => "black-queen.png",
             (PieceType::King, PieceColor::Black) => "black-king.png",
             (PieceType::None, _) => "crong.png",
-        };
-        piece_img
+        }
     }
 }
 
@@ -357,7 +355,6 @@ fn draw_square(
         .insert(Square);
 }
 
-// TODO: Implement dragging the pieces, and moving them to the closest square on release
 #[allow(clippy::too_many_arguments)]
 fn my_cursor_system(
     // need to get window dimensions and cursor position
@@ -369,7 +366,7 @@ fn my_cursor_system(
     // query to get all sprites with the Piece component
     mut q_pieces: Query<(&mut Transform, With<Piece>)>,
     // query to get all sprites with the DraggedPiece component
-    mut q_dragged_pieces: Query<(&mut Transform, With<DraggedPiece>, Without<Piece>)>,
+    mut q_dragged_pieces: Query<(Entity, &mut Transform, With<DraggedPiece>, Without<Piece>)>,
     // query to get the ChessPiece resource
     chess_pieces: Res<ChessPieces>,
     // asset server to get the piece images
@@ -405,99 +402,25 @@ fn my_cursor_system(
         // reduce it to a 2D value
         let world_pos: Vec2 = world_pos.truncate().round();
 
-        //eprintln!("World coords: {}/{}", world_pos.x, world_pos.y);
+        // eprintln!("World coords: {}/{}", world_pos.x, world_pos.y);
 
         // Now that the translated cursor position is known, start handling piece dragging
         // If the left mouse button is pressed, check if a piece is under the cursor
-        if mouse_button_input.pressed(MouseButton::Left) {
-            // Check if there is already a piece being dragged
-            if q_dragged_pieces.iter_mut().next().is_none() {
-                // Check if there is a piece under the cursor, if there is, despawn it and spawn a new one with the DraggedPiece component. This will allow the piece to be dragged around the screen. When the mouse button is released, the piece will be once again despawned and a new one will be spawned in the square that the cursor is without the DraggedPiece component.
-                println!("Left mouse button pressed");
-                // Check if there is a piece under the cursor
-                for (mut transform, _) in q_pieces.iter_mut() {
-                    // Check if the cursor is over the piece with an error of SQUARE_SIZE / 2.0
-                    if transform.translation.x - SQUARE_SIZE / 2.0 < world_pos.x
-                        && transform.translation.x + SQUARE_SIZE / 2.0 > world_pos.x
-                        && transform.translation.y - SQUARE_SIZE / 2.0 < world_pos.y
-                        && transform.translation.y + SQUARE_SIZE / 2.0 > world_pos.y
-                    {
-                        // Get the piece type and color using the ChessPiece resource
-                        // First, we need to convert the X and Y coordinates to a square
-                        let square = (transform.translation.x / SQUARE_SIZE * 8.0
-                            + transform.translation.y / SQUARE_SIZE)
-                            as usize;
-                        // Then, we can get the piece type and color
-                        let (piece_type, piece_color) = chess_pieces.get_piece_type(square);
-                        // Get the piece image path
-                        // First, we need to convert the piece color to a string
-                        let p_color = chess_pieces.get_piece_color(piece_color);
-                        // THen, we need to convert the piece type to a string
-                        let p_type = chess_pieces.get_piece_name(piece_type);
-                        // Then, we can get the piece image path
-                        let piece_image_path = format!("pieces/{}-{}.png", p_color, p_type);
-                        // Despawn the piece
-                        println!("Despawning piece");
-                        transform.translation =
-                            Vec3::new(-SQUARE_SIZE / 2.0, -SQUARE_SIZE / 2.0, 3.0);
-                        // Spawn a new piece with the DraggedPiece component
-                        println!("Spawning new piece");
-                        commands
-                            .spawn(SpriteBundle {
-                                texture: asset_server.load(piece_image_path),
-                                transform: Transform::from_translation(Vec3::new(
-                                    world_pos.x,
-                                    world_pos.y,
-                                    3.0,
-                                ))
-                                .with_scale(Vec3::splat(PIECE_SIZE)),
-                                ..Default::default()
-                            })
-                            .insert(DraggedPiece);
-                    }
-                }
-            } else {
-                // If there is already a piece being dragged, move it to the cursor position
-                for (mut transform, _, _) in q_dragged_pieces.iter_mut() {
-                    transform.translation = Vec3::new(world_pos.x, world_pos.y, 3.0);
+        // TODO: Finish this function
+        match mouse_button_input.pressed(MouseButton::Left) {
+            // If the left mouse button is pressed, check if there is a piece under the cursor
+            true => {
+                // If there is no piece being dragged, check if there is a piece under the cursor. If there is a piece under the cursor, spawn a new piece at the cursor position and add the DraggedPiece component to it. If there is no piece under the cursor, do nothing.
+                match q_dragged_pieces.iter_mut().next().is_none() {
+                    true => println!("No piece being dragged"),
+                    false => println!("Piece being dragged"),
                 }
             }
-        } else {
-            // Check if there was a piece being dragged, but the mouse button was released. If there was, despawn the piece and spawn a new one in the square that the cursor is in with the "Piece" component. This will allow the piece to be moved to the square that the cursor is in.
-            if q_dragged_pieces.iter_mut().next().is_some() {
-                // Get the piece type and color using the ChessPiece resource
-                // First, we need to convert the X and Y coordinates to a square
-                let square = (world_pos.x / SQUARE_SIZE * 8.0 + world_pos.y / SQUARE_SIZE) as usize;
-                // Then, we can get the piece type and color
-                let (piece_type, piece_color) = chess_pieces.get_piece_type(square);
-                // Get the piece image path
-                // First, we need to convert the piece color to a string
-                let p_color = chess_pieces.get_piece_color(piece_color);
-                // Then, we need to convert the piece type to a string
-                let p_type = chess_pieces.get_piece_name(piece_type);
-                // Then, we can get the piece image path
-                let piece_image_path = format!("pieces/{}-{}.png", p_color, p_type);
-                // Despawn the piece
-                println!("Despawning piece");
-                for (mut transform, _, _) in q_dragged_pieces.iter_mut() {
-                    transform.translation = Vec3::new(-SQUARE_SIZE / 2.0, -SQUARE_SIZE / 2.0, 3.0);
-                }
-                // Spawn a new piece with the Piece component
-                println!("Spawning new piece");
-                commands
-                    .spawn(SpriteBundle {
-                        texture: asset_server.load(piece_image_path),
-                        transform: Transform::from_translation(Vec3::new(
-                            world_pos.x,
-                            world_pos.y,
-                            3.0,
-                        ))
-                        .with_scale(Vec3::splat(PIECE_SIZE)),
-                        ..Default::default()
-                    })
-                    .insert(Piece);
-            
-            }
+            // If the left mouse button is not pressed, check if there is a piece being dragged. If there is a piece being dragged, check if there is a square under the cursor. If there is a square under the cursor, move the piece to the square. If there is no square under the cursor, move the piece back to its original square. Then, despawn the piece with the DraggedPiece component.
+            false => match q_dragged_pieces.iter_mut().next().is_none() {
+                true => println!("No piece being was being dragged"),
+                false => println!("Piece was being dragged"),
+            },
         }
     }
 }
