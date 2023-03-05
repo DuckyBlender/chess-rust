@@ -1,12 +1,9 @@
 use bevy::{
-    prelude::*,
-    render::camera::RenderTarget,
-    sprite::MaterialMesh2dBundle,
-    winit::WinitSettings,
+    prelude::*, render::camera::RenderTarget, sprite::MaterialMesh2dBundle, winit::WinitSettings,
 };
-use bevy_inspector_egui::WorldInspectorPlugin;
+use bevy_inspector_egui::quick::WorldInspectorPlugin;
 
-const SQUARE_SIZE: f32 = 60.0;
+const SQUARE_SIZE: f32 = 50.0;
 const PIECE_SIZE: f32 = 1.0;
 const START_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR";
 
@@ -28,12 +25,6 @@ struct ChessPieces {
     pub pieces: [u8; 64],
 }
 
-impl Default for ChessPieces {
-    fn default() -> Self {
-        Self { pieces: [0; 64] }
-    }
-}
-
 struct MoveEvent;
 
 #[derive(Debug, Clone, Copy)]
@@ -52,11 +43,36 @@ enum PieceColor {
     White = 8,
     Black = 16,
 }
-trait GetPieceType {
-    fn get_piece_type(&self, index: usize) -> (PieceType, PieceColor);
-}
 
-impl GetPieceType for ChessPieces {
+impl ChessPieces {
+    fn default() -> Self {
+        Self { pieces: [0; 64] }
+    }
+
+    pub fn get_piece_index(&self, x: usize, y: usize) -> usize {
+        let piece_location = (y * 8) + x;
+        let piece = self.pieces[piece_location];
+        piece as usize
+    }
+
+    fn get_piece_name(&self, piece: PieceType) -> &'static str {
+        match piece {
+            PieceType::Pawn => "pawn",
+            PieceType::Knight => "knight",
+            PieceType::Bishop => "bishop",
+            PieceType::Rook => "rook",
+            PieceType::Queen => "queen",
+            PieceType::King => "king",
+            PieceType::None => "none",
+        }
+    }
+
+    fn get_piece_color(&self, color: PieceColor) -> &'static str {
+        match color {
+            PieceColor::White => "white",
+            PieceColor::Black => "black",
+        }
+    }
     fn get_piece_type(&self, index: usize) -> (PieceType, PieceColor) {
         let piece = self.pieces[index];
         let piece_type = match piece & 7 {
@@ -76,13 +92,6 @@ impl GetPieceType for ChessPieces {
         };
         (piece_type, piece_color)
     }
-}
-
-trait GetPieceImage {
-    fn get_piece_image(&self, index: usize) -> &str;
-}
-
-impl GetPieceImage for ChessPieces {
     fn get_piece_image(&self, index: usize) -> &str {
         let (piece_type, piece_color) = self.get_piece_type(index);
         match (&piece_type, &piece_color) {
@@ -99,37 +108,6 @@ impl GetPieceImage for ChessPieces {
             (PieceType::Queen, PieceColor::Black) => "black-queen.png",
             (PieceType::King, PieceColor::Black) => "black-king.png",
             (PieceType::None, _) => "crong.png",
-        }
-    }
-}
-
-trait GetPieceColor {
-    fn get_piece_color(&self, color: PieceColor) -> &'static str;
-}
-
-impl GetPieceColor for ChessPieces {
-    fn get_piece_color(&self, color: PieceColor) -> &'static str {
-        match color {
-            PieceColor::White => "white",
-            PieceColor::Black => "black",
-        }
-    }
-}
-
-trait GetPieceName {
-    fn get_piece_name(&self, piece: PieceType) -> &'static str;
-}
-
-impl GetPieceName for ChessPieces {
-    fn get_piece_name(&self, piece: PieceType) -> &'static str {
-        match piece {
-            PieceType::Pawn => "pawn",
-            PieceType::Knight => "knight",
-            PieceType::Bishop => "bishop",
-            PieceType::Rook => "rook",
-            PieceType::Queen => "queen",
-            PieceType::King => "king",
-            PieceType::None => "none",
         }
     }
 }
@@ -216,11 +194,6 @@ fn setup(
         });
     }
 
-    // Setup the piece locations in a 1d array
-    //let mut piece_locations: [u8; 64] = [0; 64];
-    // Initialize the board with the FEN string
-
-    // TODO: Setup the pieces from the FEN string
     load_position_from_fen(&mut commands, &mut piece_locations, asset_server);
 }
 
@@ -232,8 +205,8 @@ fn load_position_from_fen(
     // Initialize the board with the FEN string
     let mut x: usize = 0;
     let mut y: usize = 0;
-    println!("Loading position from FEN...");
-    println!("FEN: {}", START_FEN);
+    log::info!("Loading position from FEN...");
+    log::info!("FEN: {}", START_FEN);
     for char in START_FEN.chars() {
         if char == '/' {
             // Move to the next row
@@ -266,7 +239,7 @@ fn load_position_from_fen(
 
         let piece = (piece_type as u8) | (piece_color as u8);
         piece_locations[y * 8 + x] = piece;
-        println!("{:?} | {:?} = {}", piece_type, piece_color, piece);
+        log::info!("{:?} | {:?} = {}", piece_type, piece_color, piece);
 
         let square_position = Vec3::new(
             x as f32 * SQUARE_SIZE + SQUARE_SIZE / 2.0,
@@ -283,7 +256,7 @@ fn load_position_from_fen(
 
         x += 1;
     }
-    println!("PIECE LOCATIONS:\n{:?}", piece_locations)
+    log::info!("PIECE LOCATIONS:\n{:?}", piece_locations)
 }
 
 fn draw_piece(
@@ -316,7 +289,7 @@ fn draw_piece(
         .spawn(SpriteBundle {
             texture: asset_server.load(piece_img),
             transform: Transform::from_translation(square_position)
-                .with_scale(Vec3::splat(PIECE_SIZE)),
+                .with_scale(Vec3::splat(PIECE_SIZE / SQUARE_SIZE)),
             ..Default::default()
         })
         .insert(Piece);
@@ -355,8 +328,7 @@ fn draw_square(
         .insert(Square);
 }
 
-#[allow(clippy::too_many_arguments)]
-fn my_cursor_system(
+fn mouse_coords(
     // need to get window dimensions and cursor position
     wnds: Res<Windows>,
     // need to get mouse button input
@@ -365,14 +337,8 @@ fn my_cursor_system(
     q_camera: Query<(&Camera, &GlobalTransform)>,
     // query to get all sprites with the Piece component
     mut q_pieces: Query<(&mut Transform, With<Piece>)>,
-    // query to get all sprites with the DraggedPiece component
-    mut q_dragged_pieces: Query<(Entity, &mut Transform, With<DraggedPiece>, Without<Piece>)>,
     // query to get the ChessPiece resource
     chess_pieces: Res<ChessPieces>,
-    // asset server to get the piece images
-    asset_server: Res<AssetServer>,
-    // commands to spawn new sprites
-    mut commands: Commands,
 ) {
     // get the camera info and transform
     // assuming there is exactly one main camera entity, so query::single() is OK
@@ -387,6 +353,10 @@ fn my_cursor_system(
 
     // check if the cursor is inside the window and get its position
     if let Some(screen_pos) = wnd.cursor_position() {
+        if !mouse_button_input.just_pressed(MouseButton::Left) {
+            return;
+        }
+
         // get the size of the window
         let window_size = Vec2::new(wnd.width(), wnd.height());
 
@@ -402,26 +372,14 @@ fn my_cursor_system(
         // reduce it to a 2D value
         let world_pos: Vec2 = world_pos.truncate().round();
 
-        // eprintln!("World coords: {}/{}", world_pos.x, world_pos.y);
+        // log::info!("World coords: {}/{}", world_pos.x, world_pos.y);
 
-        // Now that the translated cursor position is known, start handling piece dragging
-        // If the left mouse button is pressed, check if a piece is under the cursor
-        // TODO: Finish this function
-        match mouse_button_input.pressed(MouseButton::Left) {
-            // If the left mouse button is pressed, check if there is a piece under the cursor
-            true => {
-                // If there is no piece being dragged, check if there is a piece under the cursor. If there is a piece under the cursor, spawn a new piece at the cursor position and add the DraggedPiece component to it. If there is no piece under the cursor, do nothing.
-                match q_dragged_pieces.iter_mut().next().is_none() {
-                    true => println!("No piece being dragged"),
-                    false => println!("Piece being dragged"),
-                }
-            }
-            // If the left mouse button is not pressed, check if there is a piece being dragged. If there is a piece being dragged, check if there is a square under the cursor. If there is a square under the cursor, move the piece to the square. If there is no square under the cursor, move the piece back to its original square. Then, despawn the piece with the DraggedPiece component.
-            false => match q_dragged_pieces.iter_mut().next().is_none() {
-                true => println!("No piece being was being dragged"),
-                false => println!("Piece was being dragged"),
-            },
-        }
+        let board_pos: Vec2 = Vec2::new(
+            (world_pos.x / SQUARE_SIZE).floor(),
+            (world_pos.y / SQUARE_SIZE).floor(),
+        );
+
+        log::info!("Board coords: {} x {}", board_pos.x, board_pos.y);
     }
 }
 
@@ -439,13 +397,12 @@ fn main() {
         }))
         // Only run the app when there is user input. This will significantly reduce CPU/GPU use.
         .insert_resource(WinitSettings::desktop_app())
-        .add_plugin(WorldInspectorPlugin::new())
-        // .add_system(mouse_click)
-        .add_system(my_cursor_system)
+        .add_plugin(WorldInspectorPlugin)
         // Antialiasing
         .insert_resource(Msaa { samples: 4 })
         .add_system(bevy::window::close_on_esc)
         .insert_resource(ChessPieces::default())
+        .add_system(mouse_coords)
         .add_event::<MoveEvent>()
         .add_startup_system(setup)
         .run();
