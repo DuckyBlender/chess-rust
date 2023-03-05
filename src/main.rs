@@ -2,9 +2,10 @@ use bevy::{
     prelude::*, render::camera::RenderTarget, sprite::MaterialMesh2dBundle, winit::WinitSettings,
 };
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
+use std::env;
 
 const SQUARE_SIZE: f32 = 50.0;
-const PIECE_SIZE: f32 = 1.0;
+// const PIECE_SIZE: f32 = 1.0;
 const START_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR";
 
 const LIGHT_COL: Color = Color::rgb(1.0, 1.0, 1.0);
@@ -45,7 +46,7 @@ enum PieceColor {
 }
 
 impl ChessPieces {
-    fn default() -> Self {
+    pub fn default() -> Self {
         Self { pieces: [0; 64] }
     }
 
@@ -55,7 +56,7 @@ impl ChessPieces {
         piece as usize
     }
 
-    fn get_piece_name(&self, piece: PieceType) -> &'static str {
+    pub fn get_piece_name(&self, piece: PieceType) -> &'static str {
         match piece {
             PieceType::Pawn => "pawn",
             PieceType::Knight => "knight",
@@ -67,13 +68,13 @@ impl ChessPieces {
         }
     }
 
-    fn get_piece_color(&self, color: PieceColor) -> &'static str {
+    pub fn get_piece_color(&self, color: PieceColor) -> &'static str {
         match color {
             PieceColor::White => "white",
             PieceColor::Black => "black",
         }
     }
-    fn get_piece_type(&self, index: usize) -> (PieceType, PieceColor) {
+    pub fn get_piece_type(&self, index: usize) -> (PieceType, PieceColor) {
         let piece = self.pieces[index];
         let piece_type = match piece & 7 {
             0 => PieceType::None,
@@ -92,7 +93,7 @@ impl ChessPieces {
         };
         (piece_type, piece_color)
     }
-    fn get_piece_image(&self, index: usize) -> &str {
+    pub fn get_piece_image(&self, index: usize) -> &str {
         let (piece_type, piece_color) = self.get_piece_type(index);
         match (&piece_type, &piece_color) {
             (PieceType::Pawn, PieceColor::White) => "white-pawn.png",
@@ -289,10 +290,26 @@ fn draw_piece(
         .spawn(SpriteBundle {
             texture: asset_server.load(piece_img),
             transform: Transform::from_translation(square_position)
-                .with_scale(Vec3::splat(PIECE_SIZE / SQUARE_SIZE)),
+                // Scale the piece to the correct size. The png is 60x60 so we divide by 60
+                .with_scale(Vec3::splat(SQUARE_SIZE / 60.0)),
             ..Default::default()
         })
-        .insert(Piece);
+        .insert(Piece)
+        // to change the default name of "sprite"
+        .with_children(|parent| {
+            parent.spawn(Text2dBundle {
+                text: Text::from_section(
+                    format!("{:?}", piece_type),
+                    TextStyle {
+                        font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                        font_size: 40.0,
+                        color: Color::BLACK,
+                    },
+                ),
+                transform: Transform::from_translation(Vec3::new(0.0, 0.0, 1.0)),
+                ..Default::default()
+            });
+        });
 }
 
 // TODO: Finish this function
@@ -378,12 +395,26 @@ fn mouse_coords(
             (world_pos.x / SQUARE_SIZE).floor(),
             (world_pos.y / SQUARE_SIZE).floor(),
         );
+        if board_pos.x < 0. || board_pos.x > 7. || board_pos.y < 0. || board_pos.y > 7. {
+            return;
+        }
 
-        log::info!("Board coords: {} x {}", board_pos.x, board_pos.y);
+        // Get the piece at the board position
+        let piece = chess_pieces.get_piece_index(board_pos.x as usize, board_pos.y as usize);
+        let piece_location = (board_pos.y * 8 as f32) + board_pos.x;
+        log::info!(
+            "Piece at {}/{}: {} array index [{piece_location}]",
+            board_pos.x,
+            board_pos.y,
+            piece
+        );
     }
 }
 
 fn main() {
+    env::set_var("RUST_LOG", "info");
+    env::set_var("RUST_BACKTRACE", "1");
+
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             window: WindowDescriptor {
