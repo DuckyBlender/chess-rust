@@ -1,7 +1,5 @@
-use bevy::{
-    prelude::*, render::camera::RenderTarget, sprite::MaterialMesh2dBundle, winit::WinitSettings,
-};
-use bevy_inspector_egui::quick::WorldInspectorPlugin;
+use bevy::{prelude::*, sprite::MaterialMesh2dBundle, winit::WinitSettings};
+// use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use std::env;
 
 const SQUARE_SIZE: f32 = 50.0;
@@ -111,91 +109,6 @@ impl ChessPieces {
             (PieceType::None, _) => "crong.png",
         }
     }
-}
-
-fn setup(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<ColorMaterial>>,
-    asset_server: Res<AssetServer>,
-    mut piece_locations: ResMut<ChessPieces>,
-) {
-    commands.spawn(Camera2dBundle {
-        transform: Transform::from_translation(Vec3::new(
-            4.0 * SQUARE_SIZE,
-            4.0 * SQUARE_SIZE,
-            // The camera is going to be very high up so that nothing is above it
-            500.0,
-        )),
-        ..Default::default()
-    });
-    // Setup chess board
-
-    // let mut board = Vec::new();
-    for row in 0..8 {
-        for column in 0..8 {
-            // Check if the square is supposed to be light or dark
-            let is_light_square: bool = (row + column) % 2 != 0;
-
-            let square_color = if is_light_square { LIGHT_COL } else { DARK_COL };
-            let square_position = Vec3::new(
-                column as f32 * SQUARE_SIZE + SQUARE_SIZE / 2.0,
-                row as f32 * SQUARE_SIZE + SQUARE_SIZE / 2.0,
-                0.0,
-            );
-            draw_square(
-                &mut commands,
-                square_color,
-                square_position,
-                &mut meshes,
-                &mut materials,
-            );
-        }
-    }
-
-    // LETTERS BELOW BOARD
-    let font = asset_server.load("fonts/Lexend-Regular.ttf");
-    let text_style = TextStyle {
-        font,
-        font_size: 30.0,
-        color: Color::ORANGE,
-    };
-    for x in 1..=8 {
-        commands.spawn(Text2dBundle {
-            // Convert numbers to letters
-            text: Text::from_section(((x + 64) as u8 as char).to_string(), text_style.clone())
-                .with_alignment(TextAlignment {
-                    vertical: VerticalAlign::Center,
-                    horizontal: HorizontalAlign::Center,
-                }),
-            transform: Transform::from_translation(Vec3::new(
-                x as f32 * SQUARE_SIZE - SQUARE_SIZE / 2.0,
-                -SQUARE_SIZE / 2.0,
-                0.0,
-            )),
-            ..Default::default()
-        });
-    }
-
-    // NUMBERS TO THE LEFT OF BOARD
-    for y in 1..=8 {
-        commands.spawn(Text2dBundle {
-            text: Text::from_section(y.to_string(), text_style.clone()).with_alignment(
-                TextAlignment {
-                    vertical: VerticalAlign::Center,
-                    horizontal: HorizontalAlign::Center,
-                },
-            ),
-            transform: Transform::from_translation(Vec3::new(
-                -SQUARE_SIZE / 2.0,
-                y as f32 * SQUARE_SIZE - SQUARE_SIZE / 2.0,
-                0.0,
-            )),
-            ..Default::default()
-        });
-    }
-
-    load_position_from_fen(&mut commands, &mut piece_locations, asset_server);
 }
 
 fn load_position_from_fen(
@@ -345,96 +258,128 @@ fn draw_square(
         .insert(Square);
 }
 
-fn mouse_coords(
-    // need to get window dimensions and cursor position
-    wnds: Res<Windows>,
-    // need to get mouse button input
-    mouse_button_input: Res<Input<MouseButton>>,
-    // query to get camera transform
-    q_camera: Query<(&Camera, &GlobalTransform)>,
-    // query to get all sprites with the Piece component
-    mut q_pieces: Query<(&mut Transform, With<Piece>)>,
-    // query to get the ChessPiece resource
-    chess_pieces: Res<ChessPieces>,
-) {
-    // get the camera info and transform
-    // assuming there is exactly one main camera entity, so query::single() is OK
-    let (camera, camera_transform) = q_camera.single();
-
-    // get the window that the camera is displaying to (or the primary window)
-    let wnd = if let RenderTarget::Window(id) = camera.target {
-        wnds.get(id).unwrap()
-    } else {
-        wnds.get_primary().unwrap()
-    };
-
-    // check if the cursor is inside the window and get its position
-    if let Some(screen_pos) = wnd.cursor_position() {
-        if !mouse_button_input.just_pressed(MouseButton::Left) {
-            return;
-        }
-
-        // get the size of the window
-        let window_size = Vec2::new(wnd.width(), wnd.height());
-
-        // convert screen position [0..resolution] to ndc [-1..1] (gpu coordinates)
-        let ndc = (screen_pos / window_size) * 2.0 - Vec2::ONE;
-
-        // matrix for undoing the projection and camera transform
-        let ndc_to_world = camera_transform.compute_matrix() * camera.projection_matrix().inverse();
-
-        // use it to convert ndc to world-space coordinates
-        let world_pos = ndc_to_world.project_point3(ndc.extend(-1.0));
-
-        // reduce it to a 2D value
-        let world_pos: Vec2 = world_pos.truncate().round();
-
-        // log::info!("World coords: {}/{}", world_pos.x, world_pos.y);
-
-        let board_pos: Vec2 = Vec2::new(
-            (world_pos.x / SQUARE_SIZE).floor(),
-            (world_pos.y / SQUARE_SIZE).floor(),
-        );
-        if board_pos.x < 0. || board_pos.x > 7. || board_pos.y < 0. || board_pos.y > 7. {
-            return;
-        }
-
-        // Get the piece at the board position
-        let piece = chess_pieces.get_piece_index(board_pos.x as usize, board_pos.y as usize);
-        let piece_location = (board_pos.y * 8 as f32) + board_pos.x;
-        log::info!(
-            "Piece at {}/{}: {} array index [{piece_location}]",
-            board_pos.x,
-            board_pos.y,
-            piece
-        );
+fn mouse_button_input(buttons: Res<Input<MouseButton>>) {
+    if buttons.just_pressed(MouseButton::Left) {
+        log::info!("Left button was pressed");
+        // Left button was pressed
     }
+    if buttons.just_released(MouseButton::Left) {
+        log::info!("Left button was released");
+        // Left Button was released
+    }
+    if buttons.pressed(MouseButton::Right) {
+        log::info!("Right button is being held down");
+        // Right Button is being held down
+    }
+    // we can check multiple at once with `.any_*`
+    if buttons.any_just_pressed([MouseButton::Left, MouseButton::Right]) {
+        log::info!("Either the left or the right button was just pressed");
+        // Either the left or the right button was just pressed
+    }
+}
+
+fn setup(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+    asset_server: Res<AssetServer>,
+    mut piece_locations: ResMut<ChessPieces>,
+) {
+    // Create window
+    commands.spawn(Window {
+        title: "Rust Chess".to_string(),
+        resolution: Vec2::new(SQUARE_SIZE * 8.0, SQUARE_SIZE * 8.0).into(),
+        resizable: true,
+        ..default()
+    });
+
+    // Setup camera
+    commands.spawn(Camera2dBundle {
+        transform: Transform::from_translation(Vec3::new(
+            4.0 * SQUARE_SIZE,
+            4.0 * SQUARE_SIZE,
+            // The camera is going to be very high up so that nothing is above it
+            500.0,
+        )),
+        ..Default::default()
+    });
+    // Setup chess board
+
+    // let mut board = Vec::new();
+    for row in 0..8 {
+        for column in 0..8 {
+            // Check if the square is supposed to be light or dark
+            let is_light_square: bool = (row + column) % 2 != 0;
+
+            let square_color = if is_light_square { LIGHT_COL } else { DARK_COL };
+            let square_position = Vec3::new(
+                column as f32 * SQUARE_SIZE + SQUARE_SIZE / 2.0,
+                row as f32 * SQUARE_SIZE + SQUARE_SIZE / 2.0,
+                0.0,
+            );
+            draw_square(
+                &mut commands,
+                square_color,
+                square_position,
+                &mut meshes,
+                &mut materials,
+            );
+        }
+    }
+
+    // LETTERS BELOW BOARD
+    let font = asset_server.load("fonts/Lexend-Regular.ttf");
+    let text_style = TextStyle {
+        font,
+        font_size: 30.0,
+        color: Color::ORANGE,
+    };
+    for x in 1..=8 {
+        commands.spawn(Text2dBundle {
+            // Convert numbers to letters
+            text: Text::from_section(((x + 64) as u8 as char).to_string(), text_style.clone())
+                .with_alignment(TextAlignment::Center),
+            transform: Transform::from_translation(Vec3::new(
+                x as f32 * SQUARE_SIZE - SQUARE_SIZE / 2.0,
+                -SQUARE_SIZE / 2.0,
+                0.0,
+            )),
+            ..Default::default()
+        });
+    }
+
+    // NUMBERS TO THE LEFT OF BOARD
+    for y in 1..=8 {
+        commands.spawn(Text2dBundle {
+            text: Text::from_section(y.to_string(), text_style.clone())
+                .with_alignment(TextAlignment::Center),
+            transform: Transform::from_translation(Vec3::new(
+                -SQUARE_SIZE / 2.0,
+                y as f32 * SQUARE_SIZE - SQUARE_SIZE / 2.0,
+                0.0,
+            )),
+            ..Default::default()
+        });
+    }
+
+    load_position_from_fen(&mut commands, &mut piece_locations, asset_server);
+}
+
+fn my_startup_system(_commands: Commands) {
+    println!("My startup system");
 }
 
 fn main() {
     env::set_var("RUST_LOG", "info");
-    env::set_var("RUST_BACKTRACE", "1");
+    // env::set_var("RUST_BACKTRACE", "1");
 
     App::new()
-        .add_plugins(DefaultPlugins.set(WindowPlugin {
-            window: WindowDescriptor {
-                title: "Rust Chess".to_string(),
-                width: SQUARE_SIZE * 10.0,
-                height: SQUARE_SIZE * 10.0,
-                resizable: true,
-                ..default()
-            },
-            ..default()
-        }))
         // Only run the app when there is user input. This will significantly reduce CPU/GPU use.
         .insert_resource(WinitSettings::desktop_app())
-        .add_plugin(WorldInspectorPlugin)
-        // Antialiasing
-        .insert_resource(Msaa { samples: 4 })
-        .add_system(bevy::window::close_on_esc)
         .insert_resource(ChessPieces::default())
-        .add_system(mouse_coords)
+        .add_system(setup.on_startup())
         .add_event::<MoveEvent>()
-        .add_startup_system(setup)
+        .add_system(my_startup_system.on_startup())
+        .add_systems((bevy::window::close_on_esc, mouse_button_input))
         .run();
 }
